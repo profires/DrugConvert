@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicine Dose Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            margin-top: 20px;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Medicine Dose Converter</h1>
+    
+    <div class="grid-container">
+        <label for="preUnit">From:</label>
+        <select id="preUnit">
+            <option value="mcg/kg/min">mcg/kg/min</option>
+            <option value="ml/hr">ml/hr</option>
+            <option value="mg/hr">mg/hr</option>
+            <option value="mcg/min">mcg/min</option>
+        </select>
+        
+        <label for="postUnit">To:</label>
+        <select id="postUnit">
+            <option value="ml/hr">ml/hr</option>
+            <option value="mcg/kg/min">mcg/kg/min</option>
+            <option value="mg/hr">mg/hr</option>
+            <option value="mcg/min">mcg/min</option>
+        </select>
+        
+        <label for="inputValue">Input Value:</label>
+        <input type="number" id="inputValue" step="0.01" required>
+        
+        <label for="weight">Patient Weight (kg):</label>
+        <input type="number" id="weight" step="0.1" required>
+        
+        <label for="concentration">Drug Concentration:</label>
+        <div class="concentration-input">
+            <input type="number" id="concentration" step="0.1" required>
+            <select id="concentrationUnit">
+                <option value="mg/ml">mg/ml</option>
+                <option value="mcg/ml">mcg/ml</option>
+                <option value="mg/L">mg/L</option>
+                <option value="g/L">g/L</option>
+                <option value="%w/v">% w/v</option>
+            </select>
+            <span class="tooltip">?
+                <span class="tooltiptext">% w/v: Weight/Volume percentage. 1% w/v = 1 g per 100 ml = 10 mg/ml</span>
+            </span>
+        </div>
+        
+        <button class="full-width" onclick="convertDose()">Convert</button>
+        
+        <p id="result" class="full-width"></p>
+    </div>
+
+    <script>
+        function convertDose() {
+            const inputValue = parseFloat(document.getElementById('inputValue').value);
+            const weight = parseFloat(document.getElementById('weight').value);
+            const concentration = parseFloat(document.getElementById('concentration').value);
+            const preUnit = document.getElementById('preUnit').value;
+            const postUnit = document.getElementById('postUnit').value;
+            
+            if (isNaN(inputValue) || isNaN(weight) || isNaN(concentration)) {
+                document.getElementById('result').textContent = 'Please enter valid numbers for all fields.';
+                return;
+            }
+            
+            let result;
+            
+            // Convert input to mg/hr as an intermediate step
+            let mgPerHour;
+            switch(preUnit) {
+                case 'mcg/kg/min':
+                    mgPerHour = inputValue * weight * 60 / 1000;
+                    break;
+                case 'ml/hr':
+                    mgPerHour = inputValue * concentration;
+                    break;
+                case 'mg/hr':
+                    mgPerHour = inputValue;
+                    break;
+                case 'mcg/min':
+                    mgPerHour = inputValue * 60 / 1000;
+                    break;
+            }
+            
+            // Convert mg/hr to desired output unit
+            switch(postUnit) {
+                case 'mcg/kg/min':
+                    result = mgPerHour * 1000 / (weight * 60);
+                    break;
+                case 'ml/hr':
+                    result = mgPerHour / concentration;
+                    break;
+                case 'mg/hr':
+                    result = mgPerHour;
+                    break;
+                case 'mcg/min':
+                    result = mgPerHour * 1000 / 60;
+                    break;
+            }
+            
+            document.getElementById('result').textContent = `Result: ${result.toFixed(2)} ${postUnit}`;
+        }
+    </script>
+</body>
+</html>
