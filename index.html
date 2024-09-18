@@ -13,8 +13,9 @@
         }
         .grid-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: auto 1fr;
             gap: 10px;
+            align-items: center;
         }
         .full-width {
             grid-column: 1 / -1;
@@ -27,30 +28,32 @@
         button {
             margin-top: 20px;
         }
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            cursor: help;
+        .rate-unit-pair {
+            display: flex;
+            align-items: center;
         }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 200px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -100px;
-            opacity: 0;
-            transition: opacity 0.3s;
+        .rate-unit-pair input {
+            flex: 1;
+            margin-right: 5px;
+            min-width: 120px; /* Adjust this value as needed */
         }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
+        label {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .concentration-input {
+            display: flex;
+            align-items: center;
+        }
+        .concentration-input input {
+            flex: 1;
+            margin-right: 5px;
+        }
+        .concentration-input span {
+            white-space: nowrap;
+        }
+        .highlight {
+            background-color: yellow;
         }
     </style>
 </head>
@@ -58,98 +61,225 @@
     <h1>Medicine Dose Converter</h1>
     
     <div class="grid-container">
-        <label for="preUnit">From:</label>
-        <select id="preUnit">
-            <option value="mcg/kg/min">mcg/kg/min</option>
-            <option value="ml/hr">ml/hr</option>
-            <option value="mg/hr">mg/hr</option>
-            <option value="mcg/min">mcg/min</option>
-        </select>
+        <label for="rate1">Rate 1:</label>
+        <div class="rate-unit-pair">
+            <input type="number" id="rate1" step="0.01" required placeholder="Enter rate">
+            <select id="unit1">
+                <option value="mcg/kg/min">mcg/kg/min</option>
+                <option value="ml/hr">ml/hr</option>
+                <option value="mg/hr">mg/hr</option>
+                <option value="mcg/min">mcg/min</option>
+            </select>
+        </div>
         
-        <label for="postUnit">To:</label>
-        <select id="postUnit">
-            <option value="ml/hr">ml/hr</option>
-            <option value="mcg/kg/min">mcg/kg/min</option>
-            <option value="mg/hr">mg/hr</option>
-            <option value="mcg/min">mcg/min</option>
-        </select>
-        
-        <label for="inputValue">Input Value:</label>
-        <input type="number" id="inputValue" step="0.01" required>
+        <label for="rate2">Rate 2:</label>
+        <div class="rate-unit-pair">
+            <input type="number" id="rate2" step="0.01" placeholder="Enter rate">
+            <select id="unit2">
+                <option value="ml/hr">ml/hr</option>
+                <option value="mcg/kg/min">mcg/kg/min</option>
+                <option value="mg/hr">mg/hr</option>
+                <option value="mcg/min">mcg/min</option>
+            </select>
+        </div>
         
         <label for="weight">Patient Weight (kg):</label>
         <input type="number" id="weight" step="0.1" required>
         
         <label for="concentration">Drug Concentration:</label>
         <div class="concentration-input">
-            <input type="number" id="concentration" step="0.1" required>
-            <select id="concentrationUnit">
-                <option value="mg/ml">mg/ml</option>
-                <option value="mcg/ml">mcg/ml</option>
-                <option value="mg/L">mg/L</option>
-                <option value="g/L">g/L</option>
-                <option value="%w/v">% w/v</option>
-            </select>
-            <span class="tooltip">?
-                <span class="tooltiptext">% w/v: Weight/Volume percentage. 1% w/v = 1 g per 100 ml = 10 mg/ml</span>
-            </span>
+            <input type="text" id="concentration" placeholder="e.g. 4/250 or 0.016">
+            <span>mg/ml</span>
         </div>
         
-        <button class="full-width" onclick="convertDose()">Convert</button>
-        
-        <p id="result" class="full-width"></p>
+        <button class="full-width" onclick="convertRate()">Convert</button>
     </div>
 
     <script>
-        function convertDose() {
-            const inputValue = parseFloat(document.getElementById('inputValue').value);
-            const weight = parseFloat(document.getElementById('weight').value);
-            const concentration = parseFloat(document.getElementById('concentration').value);
-            const preUnit = document.getElementById('preUnit').value;
-            const postUnit = document.getElementById('postUnit').value;
+        function parseConcentration(input) {
+            if (input === '') {
+                return '';
+            }
             
-            if (isNaN(inputValue) || isNaN(weight) || isNaN(concentration)) {
-                document.getElementById('result').textContent = 'Please enter valid numbers for all fields.';
+            if (input.includes('/')) {
+                const [numerator, denominator] = input.split('/').map(parseFloat);
+                if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
+                    alert('Invalid fraction for concentration. Please use format "number/number" with non-zero denominator.');
+                    return NaN;
+                }
+                return numerator / denominator;
+            } else {
+                const value = parseFloat(input);
+                if (isNaN(value) || value <= 0) {
+                    alert('Invalid concentration. Please enter a positive number.');
+                    return NaN;
+                }
+                return value;
+            }
+        }
+
+        function convertRate() {
+            const inputs = ['rate1', 'weight', 'rate2', 'concentration'];
+            const values = inputs.map(id => document.getElementById(id).value);
+            const unit1 = document.getElementById('unit1').value;
+            const unit2 = document.getElementById('unit2').value;
+
+            // Parse concentration first
+            const parsedConcentration = parseConcentration(values[3]);
+            if (values[3] !== '' && isNaN(parsedConcentration)) {
+                return; // parseConcentration will have shown an error message
+            }
+
+            // Parse other values and count empty fields
+            const parsedValues = values.map((v, i) => {
+                if (i === 3) return parsedConcentration; // Use already parsed concentration
+                return v === '' ? '' : parseFloat(v);
+            });
+
+            const emptyFieldsCount = parsedValues.filter(v => v === '').length;
+            const emptyFieldIndex = parsedValues.findIndex(v => v === '');
+
+            if (emptyFieldsCount !== 1) {
+                alert('Please leave exactly one field blank to calculate.');
                 return;
             }
-            
-            let result;
-            
-            // Convert input to mg/hr as an intermediate step
-            let mgPerHour;
-            switch(preUnit) {
-                case 'mcg/kg/min':
-                    mgPerHour = inputValue * weight * 60 / 1000;
+
+            // Check if non-empty fields are valid numbers
+            for (let i = 0; i < 3; i++) {
+                if (i !== emptyFieldIndex && isNaN(parsedValues[i])) {
+                    alert(`Please enter a valid number for ${inputs[i]}.`);
+                    return;
+                }
+            }
+
+            // Remove highlight from all inputs
+            inputs.forEach(id => document.getElementById(id).classList.remove('highlight'));
+
+            // Calculation logic based on the empty field
+            let calculatedValue;
+            const [rate1, weight, rate2, concentration] = parsedValues;
+
+            switch (emptyFieldIndex) {
+                case 0: // Calculate Rate 1
+                    calculatedValue = calculateRate1(rate2, weight, concentration, unit1, unit2);
                     break;
-                case 'ml/hr':
-                    mgPerHour = inputValue * concentration;
+                case 1: // Calculate weight
+                    calculatedValue = calculateWeight(rate1, rate2, concentration, unit1, unit2);
                     break;
-                case 'mg/hr':
-                    mgPerHour = inputValue;
+                case 2: // Calculate Rate 2
+                    calculatedValue = calculateRate2(rate1, weight, concentration, unit1, unit2);
                     break;
-                case 'mcg/min':
-                    mgPerHour = inputValue * 60 / 1000;
+                case 3: // Calculate concentration
+                    calculatedValue = calculateConcentration(rate1, weight, rate2, unit1, unit2);
                     break;
             }
-            
-            // Convert mg/hr to desired output unit
-            switch(postUnit) {
-                case 'mcg/kg/min':
-                    result = mgPerHour * 1000 / (weight * 60);
-                    break;
-                case 'ml/hr':
-                    result = mgPerHour / concentration;
-                    break;
-                case 'mg/hr':
-                    result = mgPerHour;
-                    break;
-                case 'mcg/min':
-                    result = mgPerHour * 1000 / 60;
-                    break;
+
+            if (isNaN(calculatedValue)) {
+                alert('Unable to calculate with the given values.');
+            } else {
+                const calculatedField = document.getElementById(inputs[emptyFieldIndex]);
+                calculatedField.value = emptyFieldIndex === 3 ? calculatedValue.toFixed(4) : calculatedValue.toFixed(2);
+                calculatedField.classList.add('highlight');
             }
-            
-            document.getElementById('result').textContent = `Result: ${result.toFixed(2)} ${postUnit}`;
         }
+
+        function calculateRate1(rate2, weight, concentration, unit1, unit2) {
+            let mlPerHour = convertToMlPerHour(rate2, weight, concentration, unit2);
+            return convertFromMlPerHour(mlPerHour, weight, concentration, unit1);
+        }
+
+        function calculateRate2(rate1, weight, concentration, unit1, unit2) {
+            let mlPerHour = convertToMlPerHour(rate1, weight, concentration, unit1);
+            return convertFromMlPerHour(mlPerHour, weight, concentration, unit2);
+        }
+
+        function convertToMlPerHour(rate, weight, concentration, unit) {
+            switch (unit) {
+                case 'mcg/kg/min':
+                    return (rate * weight * 60) / (concentration * 1000);
+                case 'ml/hr':
+                    return rate;
+                case 'mg/hr':
+                    return rate / concentration;
+                case 'mcg/min':
+                    return (rate * 60) / (concentration * 1000);
+            }
+        }
+
+        function convertFromMlPerHour(mlPerHour, weight, concentration, unit) {
+            switch (unit) {
+                case 'mcg/kg/min':
+                    return (mlPerHour * concentration * 1000) / (weight * 60);
+                case 'ml/hr':
+                    return mlPerHour;
+                case 'mg/hr':
+                    return mlPerHour * concentration;
+                case 'mcg/min':
+                    return (mlPerHour * concentration * 1000) / 60;
+            }
+        }
+
+        function calculateWeight(rate1, rate2, concentration, unit1, unit2) {
+            if (unit1 === 'mcg/kg/min' && unit2 !== 'mcg/kg/min') {
+                let mlPerHour1 = convertToMlPerHour(rate1, 1, concentration, unit1);
+                let mlPerHour2 = convertToMlPerHour(rate2, 1, concentration, unit2);
+                return mlPerHour2 / mlPerHour1;
+            } else if (unit2 === 'mcg/kg/min' && unit1 !== 'mcg/kg/min') {
+                let mlPerHour1 = convertToMlPerHour(rate1, 1, concentration, unit1);
+                let mlPerHour2 = convertToMlPerHour(rate2, 1, concentration, unit2);
+                return mlPerHour1 / mlPerHour2;
+            }
+            return NaN; // Weight can only be calculated if exactly one of the units is mcg/kg/min
+        }
+
+        function calculateConcentration(rate1, weight, rate2, unit1, unit2) {
+            // Convert both rates to ml/hr
+            if (unit1 === 'ml/hr' && unit2 === 'ml/hr'){
+                return Nan;
+            }
+            else if (unit1 ==='ml/hr'){
+                let mlPerHour2 = convertToMlPerHour(rate2, weight, 1, unit2);
+                return mlPerHour2/rate1;
+            }
+            else if (unit2 ==='ml/hr'){
+                let mlPerHour1 = convertToMlPerHour(rate1, weight, 1, unit1);
+                return mlPerHour1/rate2;
+            }
+            return NaN;
+        }
+
+        function convertToMgPerHour(rate, weight, unit) {
+            switch (unit) {
+                case 'mcg/kg/min':
+                    return rate * weight * 60 / 1000;
+                case 'ml/hr':
+                    return 0; // We don't know the concentration yet
+                case 'mg/hr':
+                    return rate;
+                case 'mcg/min':
+                    return rate * 60 / 1000;
+            }
+        }
+
+        // Add this new function
+        function removeHighlight() {
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.remove('highlight');
+            });
+        }
+
+        // Add this code at the end of the script to set up event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('input', removeHighlight);
+            });
+
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => {
+                select.addEventListener('change', removeHighlight);
+            });
+        });
     </script>
 </body>
 </html>
